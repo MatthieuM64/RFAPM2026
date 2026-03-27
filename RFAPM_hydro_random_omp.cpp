@@ -361,7 +361,7 @@ int main(int argc, char *argv[])
 	double beta=1., epsilon=0.9, rho0=3., h=0.3;
 	int LX=512, LY=512;
 	
-	//Numerical parameters: init=initial condition, tmax=maximal time, RAN=index of RNG.
+	//Numerical parameters: init=initial condition, dt=discrete time, tmax=maximal time, dx=meshgrid size, rhog=min density, rhol=max density, RAN=index of RNG, THREAD_NUM=number of threads.
 	double dt=0.001, tmax=5000., dx=0.25, rhog=0.9, rhol=3;
 	int init=0, THREAD_NUM=4, RAN=0;
 
