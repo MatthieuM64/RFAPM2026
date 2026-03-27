@@ -23,13 +23,13 @@
 using namespace std;
 
 //Personal libraries.
-#include "lib/random.cpp"
 #include "lib/special_functions.cpp"
 
 //////////////////////////////
 ///// MESHGRID FUNCTIONS /////
 //////////////////////////////
 
+//Initial condition.
 void meshInit(vector<vector<double> > &RHO1, vector<vector<double> > &RHO2, vector<vector<double> > &RHO3, vector<vector<double> > &RHO4, const int &init, const double &rhog, const double &rhol, const double &rho0, const double &beta, const double &r, const int &NX, const int &NY)
 {
 	double magl=0.8, dH=0.01;
@@ -41,28 +41,28 @@ void meshInit(vector<vector<double> > &RHO1, vector<vector<double> > &RHO2, vect
 		for (int y=0; y<NY; y++)
 		{
 			double rho=rhog, mag=0;
-			if ((init==0 or init==4) and abs(x-0.5*NX)<0.5*NX*phi-dH*NX*cos(2*M_PI*y/NY)) //vertical band
+			if ((init==0 or init==4) and abs(x-0.5*NX)<0.5*NX*phi-dH*NX*cos(2*M_PI*y/NY)) //vertical band.
 			{
 				rho=rhol;
 				mag=magl;
 			}
-			else if ((init==1 or init==3) and abs(y-0.5*NY)<0.5*NY*phi-dH*NY*cos(2*M_PI*x/NX)) //horizontal band
+			else if ((init==1 or init==3) and abs(y-0.5*NY)<0.5*NY*phi-dH*NY*cos(2*M_PI*x/NX)) //horizontal band.
 			{
 				rho=rhol;
 				mag=magl;
 			}
-			else if ((init==2 or init==5) and square(double(x)/NX-0.5)+square(double(y)/NY-0.5)<phi/M_PI) //liquid droplet
+			else if ((init==2 or init==5) and square(double(x)/NX-0.5)+square(double(y)/NY-0.5)<phi/M_PI) //liquid droplet.
 			{
 				rho=rhol;
 				mag=magl;
 			}
 			
-			if (init<=2)
+			if (init<=2) //Ordered state in right direction (along the field).
 			{
 				RHO1[x][y]=0.25*rho*(1+3*mag);
 				RHO2[x][y]=0.25*rho*(1-mag);
 			}
-			else
+			else //Ordered state in up direction (orthogonal to the field).
 			{
 				RHO1[x][y]=0.25*rho*(1-mag);
 				RHO2[x][y]=0.25*rho*(1+3*mag);
@@ -73,13 +73,14 @@ void meshInit(vector<vector<double> > &RHO1, vector<vector<double> > &RHO2, vect
 	}
 }
 
+//Flipping terms.
 double Iflip(const double &rj, const double ri, const double &deltaH, const double &rho, const double &beta, const double &r)
 {
 	double mag=4*beta*(rj-ri)/rho+4*beta*deltaH;
 	return exp(r/(2*rho))*((rj+ri-r/(4*beta))*sinh(mag)-(rj-ri)*cosh(mag));
 }
 
-
+//Finite difference algorithm.
 void finiteDiff(vector<vector<double> > &RHO1, vector<vector<double> > &RHO2, vector<vector<double> > &RHO3, vector<vector<double> > &RHO4, const double &Dpara, const double &Dperp, const double &v0, const double &gamma0, const double &beta, const vector<double> &HLOC, const double &r, const int &NX, const int &NY)
 {
 	static vector<double> DRHO1(NX*NY,0), DRHO2(NX*NY,0), DRHO3(NX*NY,0), DRHO4(NX*NY,0);
@@ -89,13 +90,14 @@ void finiteDiff(vector<vector<double> > &RHO1, vector<vector<double> > &RHO2, ve
 		#pragma omp for schedule(static)
 		for (int x=0; x<NX; x++)
 		{
-			const int xm=x-1+(x==0)*NX, xp=x+1-(x==NX-1)*NX;
+			const int xm=x-1+(x==0)*NX, xp=x+1-(x==NX-1)*NX; //x periodic neighbours
 			#pragma omp simd
 			for (int y=0; y<NY; y++)
 			{
-				const int ym=y-1+(y==0)*NY, yp=y+1-(y==NY-1)*NY;
+				const int ym=y-1+(y==0)*NY, yp=y+1-(y==NY-1)*NY; //y periodic neighbours
 				const double rho=RHO1[x][y]+RHO2[x][y]+RHO3[x][y]+RHO4[x][y];
 				
+				//Flipping terms.
 				const double I12=Iflip(RHO1[x][y],RHO2[x][y],HLOC[0]-HLOC[1],rho,beta,r);
 				const double I13=Iflip(RHO1[x][y],RHO3[x][y],HLOC[0]-HLOC[2],rho,beta,r);
 				const double I14=Iflip(RHO1[x][y],RHO4[x][y],HLOC[0]-HLOC[3],rho,beta,r);
@@ -103,6 +105,7 @@ void finiteDiff(vector<vector<double> > &RHO1, vector<vector<double> > &RHO2, ve
 				const double I24=Iflip(RHO2[x][y],RHO4[x][y],HLOC[1]-HLOC[3],rho,beta,r);
 				const double I34=Iflip(RHO3[x][y],RHO4[x][y],HLOC[2]-HLOC[3],rho,beta,r);
 				
+				//Hydrodynamic equation (density variations).
 				DRHO1[x*NY+y]=Dpara*(RHO1[xm][y]+RHO1[xp][y]-2*RHO1[x][y])+Dperp*(RHO1[x][ym]+RHO1[x][yp]-2*RHO1[x][y]) - v0*(RHO1[xp][y]-RHO1[xm][y]) + gamma0*(I12+I13+I14);
 				DRHO2[x*NY+y]=Dperp*(RHO2[xm][y]+RHO2[xp][y]-2*RHO2[x][y])+Dpara*(RHO2[x][ym]+RHO2[x][yp]-2*RHO2[x][y]) - v0*(RHO2[x][yp]-RHO2[x][ym]) + gamma0*(-I12+I23+I24);
 				DRHO3[x*NY+y]=Dpara*(RHO3[xm][y]+RHO3[xp][y]-2*RHO3[x][y])+Dperp*(RHO3[x][ym]+RHO3[x][yp]-2*RHO3[x][y]) + v0*(RHO3[xp][y]-RHO3[xm][y]) + gamma0*(-I13-I23+I34);
@@ -116,6 +119,7 @@ void finiteDiff(vector<vector<double> > &RHO1, vector<vector<double> > &RHO2, ve
 			#pragma omp simd
 			for (int y=0; y<NY; y++)
 			{
+				//Implement the density variations.
 				RHO1[x][y]+=DRHO1[x*NY+y];
 				RHO2[x][y]+=DRHO2[x*NY+y];
 				RHO3[x][y]+=DRHO3[x*NY+y];
@@ -171,7 +175,7 @@ vector<double> average1d_along_x(const vector< vector<double> > &RHO, const int 
 	return rhoAv;
 }
 
-//State of the node
+//State of the node.
 int max_state(const double &rho1, const double &rho2, const double &rho3, const double &rho4, double &rho)
 {
 	static double eps=1e-2;
@@ -215,7 +219,7 @@ void exportDensityState(const vector< vector<double> > &RHO1, const vector< vect
 		}
 	}
 	
-	//Creation of the density file.
+	//Write density in a binary file.
 	int returnSystem=system("mkdir -p data_RFAPM_dynamics2d/");
 	stringstream ssDensity;
 	ssDensity << "./data_RFAPM_dynamics2d/RFAPM_density_beta=" << beta << "_epsilon=" << epsilon << "_rho0=" << rho0 << "_h=" << h << "_LX=" << LX << "_LY=" << LY << "_init=" << init << "_t=" << t << ".bin";
@@ -224,7 +228,7 @@ void exportDensityState(const vector< vector<double> > &RHO1, const vector< vect
 	fileDensity.write(reinterpret_cast<const char*>(rho.data()), rho.size()*sizeof(float));
 	fileDensity.close();
 	
-	//Creation of the state file.
+	//Write state in a binary file.
 	stringstream ssState;
 	ssState << "./data_RFAPM_dynamics2d/RFAPM_state_beta=" << beta << "_epsilon=" << epsilon << "_rho0=" << rho0 << "_h=" << h << "_LX=" << LX << "_LY=" << LY << "_init=" << init << "_t=" << t << ".bin";
 	string nameState = ssState.str();
@@ -240,7 +244,6 @@ void exportProfilesAlongX(const vector< vector<double> > &RHO1, const vector< ve
 	const vector<double> r0=average1d_along_y(RHO1,NX,NY), r1=average1d_along_y(RHO2,NX,NY), r2=average1d_along_y(RHO3,NX,NY), r3=average1d_along_y(RHO4,NX,NY);
 	
 	int returnSystem=system("mkdir -p data_RFAPM_dynamics1d/");
-	//Création du fichier de données.
 	stringstream ss;
 	ss << "./data_RFAPM_dynamics1d/RFAPM_profile_along_x_beta=" << beta << "_epsilon=" << epsilon << "_rho0=" << rho0 << "_h=" << h << "_LX=" << LX << "_LY=" << LY << "_init=" << init << "_t=" << t << ".txt";
 	string nameProfile = ss.str();
@@ -262,7 +265,6 @@ void exportProfilesAlongY(const vector< vector<double> > &RHO1, const vector< ve
 	const vector<double> r0=average1d_along_x(RHO1,NX,NY), r1=average1d_along_x(RHO2,NX,NY), r2=average1d_along_x(RHO3,NX,NY), r3=average1d_along_x(RHO4,NX,NY);
 	
 	int returnSystem=system("mkdir -p data_RFAPM_dynamics1d/");
-	//Création du fichier de données.
 	stringstream ss;
 	ss << "./data_RFAPM_dynamics1d/RFAPM_profile_along_y_beta=" << beta << "_epsilon=" << epsilon << "_rho0=" << rho0 << "_h=" << h << "_LX=" << LX << "_LY=" << LY << "_init=" << init << "_t=" << t << ".txt";
 	string nameProfile = ss.str();
@@ -367,6 +369,7 @@ int main(int argc, char *argv[])
 	omp_set_num_threads(THREAD_NUM);
 	cout << OMP_MAX_THREADS << " maximum threads on this node. " << THREAD_NUM << " threads will be used." << endl;
 	
+	//Grid size.
 	const int NX=int(LX/dx), NY=int(LY/dx);
 	
 	//Global variables.
@@ -384,9 +387,10 @@ int main(int argc, char *argv[])
 	ofstream fileAverages(nameAverages.c_str(),ios::trunc);
 	fileAverages.precision(6);
 	
-	cout.precision(8);
-	
+	//Increments.
 	const int Nsteps=int(tmax/dt), DeltaT=int(1./dt);
+	
+	//Initial condition.
 	meshInit(RHO1,RHO2,RHO3,RHO4,init,rhog,rhol,rho0,beta,r,NX,NY);
 	
 	//Time evolution.
@@ -403,7 +407,7 @@ int main(int argc, char *argv[])
 			fileAverages <<  t*dt << " " << n1+n2+n3+n4 << " " << n1 << " " << n2 << " " << n3 << " " << n4 << endl;
 		}
 		
-		//At each time-step update RHO and MAG arrays.
+		//At each time-step update densities.
 		finiteDiff(RHO1,RHO2,RHO3,RHO4,Dpara,Dperp,v0,gamma0,beta,HH,r,NX,NY);
 	}
 	return 0;
