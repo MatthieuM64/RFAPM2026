@@ -1,6 +1,6 @@
 # Active Potts model under an external field
 
-Codes used in the scientific publication: M. Karmakar, M. Mangeat, S. Chatterjee, H. Rieger, and R. Paul, <i>Field‐controlled interfacial transport and pinning in an active spin system</i>, submitted (2026). A preprint is available on arXiv.</br></br>
+Codes used in the scientific publication: M. Karmakar, M. Mangeat, S. Chatterjee, H. Rieger, and R. Paul, <i>Field‐controlled interfacial transport and pinning in an active spin system</i>, <a href="https://doi.org/10.1103/b784-7xls">Phys. Rev. E <b>114</b>, 014108 (2026)</a>. A preprint is available on <a href="https://arxiv.org/abs/2603.25842">arXiv</a>.</br></br>
 
 For each considered field (unidirectional, bidirection and random orientational), a C++ code to compute the numerical simulations of the microscopic model and a C++ code to compute the numerical solutions of the hydrodynamic equations are available in this repository. </br></br>
 <b>Exportations:</b> density snapshots and profiles shown in the different figures of the paper.</br>
